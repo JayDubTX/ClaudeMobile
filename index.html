@@ -160,8 +160,13 @@
 
   form.add {
     display: flex;
+    flex-direction: column;
     gap: 8px;
     margin-bottom: 18px;
+  }
+  .add-row {
+    display: flex;
+    gap: 8px;
   }
   input[type="text"], textarea, select {
     font-family: var(--sans);
@@ -176,11 +181,15 @@
     outline: 2px solid var(--accent);
     outline-offset: 1px;
   }
-  form.add input[type="text"] {
+  .add-row input[type="text"] {
     flex: 1;
     min-width: 0;
   }
-  form.add select { flex: 0 0 auto; }
+  .add-row select { flex: 0 0 auto; }
+  form.add textarea {
+    min-height: 40px;
+    resize: vertical;
+  }
 
   button {
     font-family: var(--sans);
@@ -341,6 +350,19 @@
     resize: vertical;
   }
 
+  form.edit-project {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+    background: var(--paper);
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+  }
+  form.edit-project textarea { min-height: 40px; resize: vertical; }
+  .edit-actions { display: flex; gap: 8px; }
+
   .empty {
     text-align: center;
     color: var(--muted);
@@ -381,16 +403,20 @@
   <div class="stats" id="stats"></div>
 
   <form class="add" id="addForm">
-    <label class="sr-only" for="newName">Project name</label>
-    <input type="text" id="newName" placeholder="Add a project…" autocomplete="off" required />
-    <label class="sr-only" for="newStatus">Status</label>
-    <select id="newStatus">
-      <option value="active">Active</option>
-      <option value="blocked">Blocked</option>
-      <option value="paused">Paused</option>
-      <option value="done">Done</option>
-    </select>
-    <button type="submit" class="primary">Add</button>
+    <div class="add-row">
+      <label class="sr-only" for="newName">Project name</label>
+      <input type="text" id="newName" placeholder="Add a project…" autocomplete="off" required />
+      <label class="sr-only" for="newStatus">Status</label>
+      <select id="newStatus">
+        <option value="active">Active</option>
+        <option value="blocked">Blocked</option>
+        <option value="paused">Paused</option>
+        <option value="done">Done</option>
+      </select>
+      <button type="submit" class="primary">Add</button>
+    </div>
+    <label class="sr-only" for="newComment">Comment</label>
+    <textarea id="newComment" placeholder="Add a comment (optional)…"></textarea>
   </form>
 
   <div class="filters" id="filters" role="group" aria-label="Filter by status"></div>
@@ -416,7 +442,8 @@
   var state = {
     projects: load(),
     filter: "all",
-    openId: null
+    openId: null,
+    editingId: null
   };
 
   function load() {
@@ -469,22 +496,45 @@
     return div.innerHTML;
   }
 
-  function addProject(name, status) {
+  function addProject(name, status, comment) {
     var ts = nowISO();
-    state.projects.push({
+    var project = {
       id: uid(),
       name: name,
       status: status,
       notes: [],
       createdAt: ts,
       updatedAt: ts
-    });
+    };
+    var commentText = (comment || "").trim();
+    if (commentText) {
+      project.notes.push({ id: uid(), text: commentText, ts: ts });
+    }
+    state.projects.push(project);
     save();
     render();
   }
 
   function touchProject(p) {
     p.updatedAt = nowISO();
+  }
+
+  function editProject(id, name, comment) {
+    var p = state.projects.find(function (x) { return x.id === id; });
+    if (!p) return;
+    var trimmedName = name.trim();
+    if (!trimmedName) return;
+    var renamed = trimmedName !== p.name;
+    p.name = trimmedName;
+    var commentText = (comment || "").trim();
+    if (commentText) {
+      p.notes.unshift({ id: uid(), text: commentText, ts: nowISO() });
+    } else if (renamed) {
+      p.notes.unshift({ id: uid(), text: 'Renamed to "' + trimmedName + '"', ts: nowISO() });
+    }
+    touchProject(p);
+    save();
+    render();
   }
 
   function setStatus(id, status) {
@@ -567,6 +617,7 @@
 
   function renderCard(p) {
     var open = state.openId === p.id;
+    var editing = state.editingId === p.id;
     var statusButtons = STATUSES.map(function (s) {
       var active = s === p.status ? ' style="border-color: var(--ink); font-weight:600;"' : "";
       return '<button type="button" class="small status-btn" data-id="' + p.id + '" data-status="' + s + '"' + active + ">" + STATUS_LABEL[s] + "</button>";
@@ -578,6 +629,19 @@
             '</span><button type="button" class="ghost small del" data-project="' + p.id + '" data-note="' + n.id + '" aria-label="Delete note">✕</button></div>';
         }).join("")
       : '<p style="color: var(--muted); font-size: 0.85rem; margin: 4px 0 10px;">No notes yet.</p>';
+
+    var editHtml = editing
+      ? '<form class="edit-project" data-id="' + p.id + '">' +
+          '<label class="sr-only" for="edit-name-' + p.id + '">Project name</label>' +
+          '<input type="text" id="edit-name-' + p.id + '" value="' + escapeHtml(p.name) + '" required autocomplete="off" />' +
+          '<label class="sr-only" for="edit-comment-' + p.id + '">Comment</label>' +
+          '<textarea id="edit-comment-' + p.id + '" placeholder="Comment on this change (optional)…"></textarea>' +
+          '<div class="edit-actions">' +
+            '<button type="submit" class="small primary">Save</button>' +
+            '<button type="button" class="small ghost" data-cancel-edit="' + p.id + '">Cancel</button>' +
+          "</div>" +
+        "</form>"
+      : "";
 
     return (
       '<div class="card' + (open ? " open" : "") + '" data-id="' + p.id + '">' +
@@ -592,6 +656,7 @@
           '<span class="chevron">&#9656;</span>' +
         "</div>" +
         '<div class="body">' +
+          editHtml +
           '<div class="status-row">' + statusButtons + "</div>" +
           '<div class="notes">' + notesHtml + "</div>" +
           '<form class="add-note" data-id="' + p.id + '">' +
@@ -600,6 +665,7 @@
             '<button type="submit" class="small primary">Log</button>' +
           "</form>" +
           '<div class="action-row" style="margin-top:12px;">' +
+            '<button type="button" class="small" data-edit="' + p.id + '">Edit</button>' +
             '<button type="button" class="small ghost" data-delete="' + p.id + '">Delete project</button>' +
           "</div>" +
         "</div>" +
@@ -617,10 +683,12 @@
     e.preventDefault();
     var nameInput = document.getElementById("newName");
     var statusInput = document.getElementById("newStatus");
+    var commentInput = document.getElementById("newComment");
     var name = nameInput.value.trim();
     if (!name) return;
-    addProject(name, statusInput.value);
+    addProject(name, statusInput.value, commentInput.value);
     nameInput.value = "";
+    commentInput.value = "";
     nameInput.focus();
   });
 
@@ -635,13 +703,27 @@
     var toggle = e.target.closest("[data-toggle]");
     if (toggle) {
       var id = toggle.getAttribute("data-toggle");
-      state.openId = state.openId === id ? null : id;
+      var closing = state.openId === id;
+      state.openId = closing ? null : id;
+      if (closing && state.editingId === id) state.editingId = null;
       render();
       return;
     }
     var statusBtn = e.target.closest(".status-btn");
     if (statusBtn) {
       setStatus(statusBtn.getAttribute("data-id"), statusBtn.getAttribute("data-status"));
+      return;
+    }
+    var editBtn = e.target.closest("[data-edit]");
+    if (editBtn) {
+      state.editingId = editBtn.getAttribute("data-edit");
+      render();
+      return;
+    }
+    var cancelEdit = e.target.closest("[data-cancel-edit]");
+    if (cancelEdit) {
+      state.editingId = null;
+      render();
       return;
     }
     var delBtn = e.target.closest("[data-delete]");
@@ -657,12 +739,24 @@
   });
 
   document.getElementById("list").addEventListener("submit", function (e) {
-    var form = e.target.closest(".add-note");
-    if (!form) return;
-    e.preventDefault();
-    var id = form.getAttribute("data-id");
-    var textarea = form.querySelector("textarea");
-    addNote(id, textarea.value);
+    var noteForm = e.target.closest(".add-note");
+    if (noteForm) {
+      e.preventDefault();
+      var id = noteForm.getAttribute("data-id");
+      var textarea = noteForm.querySelector("textarea");
+      addNote(id, textarea.value);
+      return;
+    }
+    var editForm = e.target.closest(".edit-project");
+    if (editForm) {
+      e.preventDefault();
+      var editId = editForm.getAttribute("data-id");
+      var nameInput = editForm.querySelector('input[type="text"]');
+      var commentInput = editForm.querySelector("textarea");
+      state.editingId = null;
+      editProject(editId, nameInput.value, commentInput.value);
+      return;
+    }
   });
 
   function offerDownload(filename, dataStr) {
