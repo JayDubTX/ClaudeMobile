@@ -389,6 +389,60 @@
     margin-bottom: 6px;
   }
 
+  .sync-panel {
+    margin-top: 28px;
+    padding: 14px 16px;
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+  }
+  .sync-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .sync-title {
+    font-family: var(--serif);
+    font-size: 1rem;
+    margin: 0;
+  }
+  .sync-dot {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+  .sync-dot::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    display: inline-block;
+  }
+  .sync-dot.synced::before { background: var(--active); }
+  .sync-dot.error::before { background: var(--blocked); }
+  .sync-dot.syncing::before { background: var(--accent); }
+  .sync-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .sync-help {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin: 8px 0 0;
+  }
+  form.sync-connect {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  form.sync-connect input[type="password"] {
+    font-family: var(--mono);
+    font-size: 0.88rem;
+  }
+
   #importFile { display: none; }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 </style>
@@ -423,8 +477,10 @@
 
   <div class="list" id="list"></div>
 
+  <div class="sync-panel" id="syncPanel"></div>
+
   <div class="toolbar">
-    <p class="storage-note">Saved in this browser only. Export a backup now and then.</p>
+    <p class="storage-note">Always saved in this browser. Export a backup now and then, or set up GitHub sync below to share across devices.</p>
     <button type="button" class="small" id="exportBtn">Export backup</button>
     <button type="button" class="small" id="importBtn">Import backup</button>
     <input type="file" id="importFile" accept="application/json" />
@@ -435,9 +491,15 @@
 <script>
 (function () {
   var STORE_KEY = "focus.projects.v1";
+  var TOKEN_KEY = "focus.sync.token";
   var STATUSES = ["active", "blocked", "paused", "done"];
   var STATUS_LABEL = { active: "Active", blocked: "Blocked", paused: "Paused", done: "Done" };
   var STATUS_ORDER = { active: 0, blocked: 1, paused: 2, done: 3 };
+
+  var GH_OWNER = "JayDubTX";
+  var GH_REPO = "ClaudeMobile";
+  var GH_BRANCH = "main";
+  var GH_PATH = "data/projects.json";
 
   var state = {
     projects: load(),
@@ -445,6 +507,14 @@
     openId: null,
     editingId: null
   };
+
+  var sync = {
+    status: getToken() ? "syncing" : "off", // off | syncing | synced | error
+    detail: null,
+    lastSyncAt: null,
+    showConnectForm: false
+  };
+  var syncTimer = null;
 
   function load() {
     try {
@@ -458,8 +528,25 @@
     }
   }
 
-  function save() {
+  function persistLocal() {
     localStorage.setItem(STORE_KEY, JSON.stringify(state.projects));
+  }
+
+  function save() {
+    persistLocal();
+    scheduleSync();
+  }
+
+  function getToken() {
+    return localStorage.getItem(TOKEN_KEY) || "";
+  }
+
+  function setToken(t) {
+    localStorage.setItem(TOKEN_KEY, t);
+  }
+
+  function clearToken() {
+    localStorage.removeItem(TOKEN_KEY);
   }
 
   function uid() {
@@ -570,6 +657,166 @@
     render();
   }
 
+  // --- GitHub-backed sync -------------------------------------------------
+  // Uses the GitHub Contents API to read/write GH_PATH in GH_OWNER/GH_REPO
+  // as the shared store. Last write wins: this app assumes one device edits
+  // at a time, and doesn't attempt to merge concurrent conflicting edits.
+
+  function b64EncodeUtf8(str) {
+    return btoa(unescape(encodeURIComponent(str)));
+  }
+
+  function b64DecodeUtf8(b64) {
+    return decodeURIComponent(escape(atob(b64.replace(/\n/g, ""))));
+  }
+
+  function ghHeaders() {
+    return {
+      "Authorization": "Bearer " + getToken(),
+      "Accept": "application/vnd.github+json",
+      "Content-Type": "application/json",
+      "X-GitHub-Api-Version": "2022-11-28"
+    };
+  }
+
+  function ghContentsUrl() {
+    return "https://api.github.com/repos/" + GH_OWNER + "/" + GH_REPO + "/contents/" + GH_PATH;
+  }
+
+  function ghErrorFromResponse(res) {
+    return res.json().catch(function () { return {}; }).then(function (body) {
+      if (res.status === 401 || res.status === 403) {
+        return new Error("GitHub rejected this token (HTTP " + res.status + "). Check it has Contents: Read and write access to " + GH_OWNER + "/" + GH_REPO + ".");
+      }
+      return new Error(body.message || ("GitHub returned HTTP " + res.status));
+    });
+  }
+
+  function ghGetFile() {
+    return fetch(ghContentsUrl() + "?ref=" + GH_BRANCH, { headers: ghHeaders() }).then(function (res) {
+      if (res.status === 404) return null;
+      if (!res.ok) return ghErrorFromResponse(res).then(function (err) { throw err; });
+      return res.json().then(function (data) {
+        return { sha: data.sha, text: b64DecodeUtf8(data.content) };
+      });
+    });
+  }
+
+  function setSyncStatus(status, detail) {
+    sync.status = status;
+    sync.detail = detail || null;
+    if (status === "synced") sync.lastSyncAt = nowISO();
+    renderSync();
+  }
+
+  function scheduleSync() {
+    if (!getToken()) return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(function () { pushToGitHub(); }, 1200);
+  }
+
+  function pushToGitHub(isRetry) {
+    if (!getToken()) return Promise.resolve();
+    setSyncStatus("syncing");
+    return ghGetFile().then(function (current) {
+      return fetch(ghContentsUrl(), {
+        method: "PUT",
+        headers: ghHeaders(),
+        body: JSON.stringify({
+          message: "Update projects — " + nowISO(),
+          content: b64EncodeUtf8(JSON.stringify(state.projects, null, 2)),
+          branch: GH_BRANCH,
+          sha: current ? current.sha : undefined
+        })
+      });
+    }).then(function (res) {
+      if (res.status === 409 && !isRetry) return pushToGitHub(true);
+      if (!res.ok) return ghErrorFromResponse(res).then(function (err) { throw err; });
+      setSyncStatus("synced");
+    }).catch(function (err) {
+      setSyncStatus("error", err.message);
+    });
+  }
+
+  function pullFromGitHub() {
+    if (!getToken()) return Promise.resolve();
+    setSyncStatus("syncing");
+    return ghGetFile().then(function (file) {
+      if (file) {
+        var parsed = JSON.parse(file.text);
+        if (Array.isArray(parsed)) {
+          state.projects = parsed;
+          persistLocal();
+        }
+      }
+      setSyncStatus("synced");
+      render();
+    }).catch(function (err) {
+      setSyncStatus("error", err.message);
+    });
+  }
+
+  function connectSync(token) {
+    setToken(token);
+    setSyncStatus("syncing");
+    ghGetFile().then(function (file) {
+      if (file) {
+        var parsed = JSON.parse(file.text);
+        var remote = Array.isArray(parsed) ? parsed : [];
+        if (state.projects.length && remote.length) {
+          var useRemote = confirm(
+            "GitHub already has " + remote.length + " project(s) saved. Load those and replace what's in this browser (" +
+            state.projects.length + ")?\n\nChoose Cancel to instead push this browser's data to GitHub, overwriting it there."
+          );
+          if (useRemote) {
+            state.projects = remote;
+            persistLocal();
+            return null;
+          }
+          return pushNow(file.sha);
+        }
+        if (remote.length) {
+          state.projects = remote;
+          persistLocal();
+          return null;
+        }
+        return pushNow(file.sha);
+      }
+      return pushNow();
+    }).then(function () {
+      setSyncStatus("synced");
+      sync.showConnectForm = false;
+      render();
+    }).catch(function (err) {
+      clearToken();
+      setSyncStatus("off", err.message);
+      alert("Could not connect: " + err.message);
+    });
+
+    function pushNow(shaToUse) {
+      return fetch(ghContentsUrl(), {
+        method: "PUT",
+        headers: ghHeaders(),
+        body: JSON.stringify({
+          message: "Update projects — " + nowISO(),
+          content: b64EncodeUtf8(JSON.stringify(state.projects, null, 2)),
+          branch: GH_BRANCH,
+          sha: shaToUse
+        })
+      }).then(function (res) {
+        if (!res.ok) return ghErrorFromResponse(res).then(function (err) { throw err; });
+      });
+    }
+  }
+
+  function disconnectSync() {
+    if (!confirm("Stop syncing this browser with GitHub? Your projects stay saved locally.")) return;
+    clearToken();
+    clearTimeout(syncTimer);
+    setSyncStatus("off");
+    render();
+  }
+
   function renderStats() {
     var counts = { active: 0, blocked: 0, paused: 0, done: 0 };
     state.projects.forEach(function (p) { if (counts[p.status] !== undefined) counts[p.status]++; });
@@ -673,10 +920,58 @@
     );
   }
 
+  function renderSync() {
+    var el = document.getElementById("syncPanel");
+    if (!el) return;
+
+    var statusLabel = {
+      off: "Not synced",
+      syncing: "Syncing…",
+      synced: "Synced" + (sync.lastSyncAt ? " " + fmtTs(sync.lastSyncAt) : ""),
+      error: "Sync error"
+    }[sync.status];
+
+    var head =
+      '<div class="sync-head">' +
+        '<p class="sync-title">Sync across devices</p>' +
+        '<span class="sync-dot ' + sync.status + '">' + statusLabel + "</span>" +
+      "</div>";
+
+    var errorLine = sync.status === "error" && sync.detail
+      ? '<p class="sync-help" style="color: var(--blocked);">' + escapeHtml(sync.detail) + "</p>"
+      : "";
+
+    if (!getToken()) {
+      el.innerHTML = head +
+        '<p class="sync-help">Connect this browser to ' + GH_OWNER + "/" + GH_REPO +
+          " on GitHub so your projects follow you between devices.</p>" +
+        errorLine +
+        (sync.showConnectForm
+          ? '<form class="sync-connect" id="syncConnectForm">' +
+              '<label class="sr-only" for="syncToken">GitHub personal access token</label>' +
+              '<input type="password" id="syncToken" placeholder="Fine-grained token with Contents: Read and write on ' + GH_OWNER + "/" + GH_REPO + '…" autocomplete="off" required />' +
+              '<p class="sync-help">Create one at github.com/settings/personal-access-tokens/new, scoped to just this repository.</p>' +
+              '<div class="sync-actions">' +
+                '<button type="submit" class="small primary">Connect</button>' +
+                '<button type="button" class="small ghost" id="syncCancelConnect">Cancel</button>' +
+              "</div>" +
+            "</form>"
+          : '<div class="sync-actions"><button type="button" class="small" id="syncStart">Set up GitHub sync</button></div>');
+      return;
+    }
+
+    el.innerHTML = head + errorLine +
+      '<div class="sync-actions">' +
+        '<button type="button" class="small" id="syncNow">Sync now</button>' +
+        '<button type="button" class="small ghost" id="syncDisconnect">Disconnect</button>' +
+      "</div>";
+  }
+
   function render() {
     renderStats();
     renderFilters();
     renderList();
+    renderSync();
   }
 
   document.getElementById("addForm").addEventListener("submit", function (e) {
@@ -759,6 +1054,38 @@
     }
   });
 
+  document.getElementById("syncPanel").addEventListener("click", function (e) {
+    if (e.target.closest("#syncStart")) {
+      sync.showConnectForm = true;
+      renderSync();
+      return;
+    }
+    if (e.target.closest("#syncCancelConnect")) {
+      sync.showConnectForm = false;
+      renderSync();
+      return;
+    }
+    if (e.target.closest("#syncNow")) {
+      clearTimeout(syncTimer);
+      pushToGitHub().then(function () { return pullFromGitHub(); });
+      return;
+    }
+    if (e.target.closest("#syncDisconnect")) {
+      disconnectSync();
+      return;
+    }
+  });
+
+  document.getElementById("syncPanel").addEventListener("submit", function (e) {
+    var form = e.target.closest("#syncConnectForm");
+    if (!form) return;
+    e.preventDefault();
+    var tokenInput = document.getElementById("syncToken");
+    var token = tokenInput.value.trim();
+    if (!token) return;
+    connectSync(token);
+  });
+
   function offerDownload(filename, dataStr) {
     if (window.claude && window.claude.downloads) {
       window.claude.downloads.save({ filename: filename, data: dataStr }).catch(function (err) {
@@ -821,6 +1148,7 @@
   });
 
   render();
+  if (getToken()) pullFromGitHub();
 })();
 </script>
 </body>
