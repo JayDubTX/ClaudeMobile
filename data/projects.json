@@ -40,13 +40,5 @@
     ],
     "createdAt": "2026-08-06T20:03:44.050Z",
     "updatedAt": "2026-08-06T20:03:44.050Z"
-  },
-  {
-    "id": "aeejvhjwtjnmsi3uy5d",
-    "name": "Test project",
-    "status": "done",
-    "notes": [],
-    "createdAt": "2026-08-06T22:46:29.473Z",
-    "updatedAt": "2026-08-06T22:46:29.473Z"
   }
 ]
