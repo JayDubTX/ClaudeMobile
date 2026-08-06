@@ -40,5 +40,19 @@
     ],
     "createdAt": "2026-08-06T20:03:44.050Z",
     "updatedAt": "2026-08-06T20:03:44.050Z"
+  },
+  {
+    "id": "idcjzux4h2bmsi2fvl2",
+    "name": "Dummy Project 2",
+    "status": "blocked",
+    "notes": [
+      {
+        "id": "d5f6ag2en4lmsi2fvl2",
+        "text": "Testing ability to see and then remove this project.",
+        "ts": "2026-08-06T22:06:46.694Z"
+      }
+    ],
+    "createdAt": "2026-08-06T22:06:46.694Z",
+    "updatedAt": "2026-08-06T22:06:46.694Z"
   }
 ]
