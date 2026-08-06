@@ -28,14 +28,6 @@
     "updatedAt": "2026-08-06T03:34:10.171Z"
   },
   {
-    "id": "9g8241xbjxdmsgz1ak3",
-    "name": "Dummy project",
-    "status": "paused",
-    "notes": [],
-    "createdAt": "2026-08-06T03:43:41.234Z",
-    "updatedAt": "2026-08-06T20:01:25.792Z"
-  },
-  {
     "id": "z2105quczs8mshy1n3n",
     "name": "DB Pipeline Template w/ Params",
     "status": "active",
