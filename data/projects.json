@@ -1,0 +1,52 @@
+[
+  {
+    "id": "c3v7qmpuvwfmsgxzxtg",
+    "name": "Databricks Markdown",
+    "status": "active",
+    "notes": [
+      {
+        "id": "u60imkyby0rmsgytvgp",
+        "text": "Review the skill, get markdown for dependent objects, create process to get markdown for dependent base tables",
+        "ts": "2026-08-06T03:37:55.081Z"
+      }
+    ],
+    "createdAt": "2026-08-06T03:14:38.451Z",
+    "updatedAt": "2026-08-06T03:37:55.081Z"
+  },
+  {
+    "id": "5k6js2zdcbrmsgyp1xa",
+    "name": "Looma Daily Brief",
+    "status": "active",
+    "notes": [
+      {
+        "id": "kve6dwrz7imsgyp1xa",
+        "text": "Have claude review the intended outcome, share the model and sample DAX statements. Don't limit to just Fabric notebook.",
+        "ts": "2026-08-06T03:34:10.171Z"
+      }
+    ],
+    "createdAt": "2026-08-06T03:34:10.171Z",
+    "updatedAt": "2026-08-06T03:34:10.171Z"
+  },
+  {
+    "id": "9g8241xbjxdmsgz1ak3",
+    "name": "Dummy project",
+    "status": "paused",
+    "notes": [],
+    "createdAt": "2026-08-06T03:43:41.234Z",
+    "updatedAt": "2026-08-06T20:01:25.792Z"
+  },
+  {
+    "id": "z2105quczs8mshy1n3n",
+    "name": "DB Pipeline Template w/ Params",
+    "status": "active",
+    "notes": [
+      {
+        "id": "86np6ulnubvmshy1n3n",
+        "text": "Dp_Auths_T2_DB_Template was being used",
+        "ts": "2026-08-06T20:03:44.050Z"
+      }
+    ],
+    "createdAt": "2026-08-06T20:03:44.050Z",
+    "updatedAt": "2026-08-06T20:03:44.050Z"
+  }
+]
