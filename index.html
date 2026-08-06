@@ -515,6 +515,7 @@
     showConnectForm: false
   };
   var syncTimer = null;
+  var localDirty = false; // true when this device has edits GitHub hasn't seen yet
 
   function load() {
     try {
@@ -534,6 +535,7 @@
 
   function save() {
     persistLocal();
+    localDirty = true;
     scheduleSync();
   }
 
@@ -732,6 +734,7 @@
     }).then(function (res) {
       if (res.status === 409 && !isRetry) return pushToGitHub(true);
       if (!res.ok) return ghErrorFromResponse(res).then(function (err) { throw err; });
+      localDirty = false;
       setSyncStatus("synced");
     }).catch(function (err) {
       setSyncStatus("error", err.message);
@@ -749,6 +752,7 @@
           persistLocal();
         }
       }
+      localDirty = false;
       setSyncStatus("synced");
       render();
     }).catch(function (err) {
@@ -784,6 +788,7 @@
       }
       return pushNow();
     }).then(function () {
+      localDirty = false;
       setSyncStatus("synced");
       sync.showConnectForm = false;
       render();
@@ -1067,7 +1072,11 @@
     }
     if (e.target.closest("#syncNow")) {
       clearTimeout(syncTimer);
-      pushToGitHub().then(function () { return pullFromGitHub(); });
+      if (localDirty) {
+        pushToGitHub();
+      } else {
+        pullFromGitHub();
+      }
       return;
     }
     if (e.target.closest("#syncDisconnect")) {
