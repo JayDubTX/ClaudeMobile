@@ -40,5 +40,19 @@
     ],
     "createdAt": "2026-08-06T20:03:44.050Z",
     "updatedAt": "2026-08-06T20:03:44.050Z"
+  },
+  {
+    "id": "n9zrgaotcmsjfsx3s",
+    "name": "Focus Tracker Enhancements",
+    "status": "active",
+    "notes": [
+      {
+        "id": "ynhbfqrml9msjfsx3t",
+        "text": "Add ability to set a reminder/timer on a project entry.  Once the timer occurs, flash the row and reset timer every XX minutes.  Prioritize projects in order of reminder first, then when they were added.",
+        "ts": "2026-08-07T21:08:36.376Z"
+      }
+    ],
+    "createdAt": "2026-08-07T21:08:36.376Z",
+    "updatedAt": "2026-08-07T21:08:36.376Z"
   }
 ]
