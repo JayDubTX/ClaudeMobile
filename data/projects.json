@@ -54,5 +54,19 @@
     ],
     "createdAt": "2026-08-07T21:08:36.376Z",
     "updatedAt": "2026-08-07T21:08:36.376Z"
+  },
+  {
+    "id": "29z612eyf0qmsl6t5h6",
+    "name": "Claude review dataflows",
+    "status": "active",
+    "notes": [
+      {
+        "id": "j7rx6bo84pmsl6t5h6",
+        "text": "After scanning json for all dataflows, have claude scan for the ones which match pattern for snowflake objects. And also determine which are coming from lakehouses.",
+        "ts": "2026-08-09T02:32:23.034Z"
+      }
+    ],
+    "createdAt": "2026-08-09T02:32:23.034Z",
+    "updatedAt": "2026-08-09T02:32:23.034Z"
   }
 ]
