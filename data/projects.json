@@ -19,6 +19,11 @@
     "status": "active",
     "notes": [
       {
+        "id": "wc7ssktqhnmsno6r67",
+        "text": "The notebook runs on its own, but when called from a pipeline, it fails.  We were able to get a separate Notebook->Pipeline to run, which was the basis for the Claude version, but the Claude version continues to fail.  It suggested that the issue was in using the name of the workspace vs the GUID and adjusted the notebook.  Made sure to attach it to a lakehouse connection.  Nothing seems to fix the issue.",
+        "ts": "2026-08-10T20:14:23.503Z"
+      },
+      {
         "id": "sso6m4ofly9msnea2kn",
         "text": "Claude created a notebook \"NB_Looma_DailyHealthCheck\".  Under review.",
         "ts": "2026-08-10T15:37:02.087Z"
@@ -30,7 +35,7 @@
       }
     ],
     "createdAt": "2026-08-06T03:34:10.171Z",
-    "updatedAt": "2026-08-10T15:37:02.087Z"
+    "updatedAt": "2026-08-10T20:14:23.503Z"
   },
   {
     "id": "z2105quczs8mshy1n3n",
