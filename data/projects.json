@@ -114,5 +114,19 @@
     ],
     "createdAt": "2026-08-11T19:36:11.534Z",
     "updatedAt": "2026-08-11T19:36:11.534Z"
+  },
+  {
+    "id": "azcnoqr9e08msp2ffu0",
+    "name": "Configure Power BI MCP for Claude",
+    "status": "active",
+    "notes": [
+      {
+        "id": "he5il6tl81omsp2ffu0",
+        "text": "Need to download from Github and configure",
+        "ts": "2026-08-11T19:40:49.512Z"
+      }
+    ],
+    "createdAt": "2026-08-11T19:40:49.512Z",
+    "updatedAt": "2026-08-11T19:40:49.512Z"
   }
 ]
