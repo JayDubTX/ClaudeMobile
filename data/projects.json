@@ -113,13 +113,18 @@
     "status": "active",
     "notes": [
       {
+        "id": "vc9h7j8inbkmsq7j8m4",
+        "text": "Notebook created by Claude is under review/testing.",
+        "ts": "2026-08-12T14:51:31.036Z"
+      },
+      {
         "id": "d9my1ln7enmsp29hce",
         "text": "Continuing making revisions to reduce refresh time",
         "ts": "2026-08-11T19:36:11.534Z"
       }
     ],
     "createdAt": "2026-08-11T19:36:11.534Z",
-    "updatedAt": "2026-08-11T19:36:11.534Z"
+    "updatedAt": "2026-08-12T14:51:31.036Z"
   },
   {
     "id": "azcnoqr9e08msp2ffu0",
