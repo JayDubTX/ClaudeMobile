@@ -124,7 +124,7 @@
   {
     "id": "azcnoqr9e08msp2ffu0",
     "name": "Configure Power BI MCP for Claude",
-    "status": "active",
+    "status": "done",
     "notes": [
       {
         "id": "he5il6tl81omsp2ffu0",
@@ -133,6 +133,6 @@
       }
     ],
     "createdAt": "2026-08-11T19:40:49.512Z",
-    "updatedAt": "2026-08-11T19:40:49.512Z"
+    "updatedAt": "2026-08-12T14:46:23.637Z"
   }
 ]
