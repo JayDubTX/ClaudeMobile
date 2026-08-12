@@ -127,12 +127,17 @@
     "status": "done",
     "notes": [
       {
+        "id": "r9hcn121p9emsq7gb3y",
+        "text": "Setup in Claude. Must follow these steps in this video.  https://www.youtube.com/watch?v=YdymjIHymdQ&t=908s\n\nPer the video, this is the JSON code which needs to be used:\n{\n  \"mcpServers\": {\n    \"powerbi-mcp-server\": {\n      \"command\": \"C:\\\\MCPServers\\\\PowerBIModelingMCP\\\\extension\\\\server\\\\powerbi-modeling-mcp.exe\",\n      \"args\": [\n        \"--start\"\n      ]\n    }\n  }",
+        "ts": "2026-08-12T14:49:14.302Z"
+      },
+      {
         "id": "he5il6tl81omsp2ffu0",
         "text": "Need to download from Github and configure",
         "ts": "2026-08-11T19:40:49.512Z"
       }
     ],
     "createdAt": "2026-08-11T19:40:49.512Z",
-    "updatedAt": "2026-08-12T14:46:23.637Z"
+    "updatedAt": "2026-08-12T14:49:14.302Z"
   }
 ]
